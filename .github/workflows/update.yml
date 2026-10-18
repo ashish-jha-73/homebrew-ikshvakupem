@@ -1,0 +1,73 @@
+name: Update formula
+
+# Keeps the IkshvakuPEM formula in sync with the latest release of
+# ashish-jha-73/IkshvakuPEM. Runs on a schedule and on demand; does nothing
+# when the formula is already current.
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get latest IkshvakuPEM release
+        id: rel
+        run: |
+          set -e
+          data=$(curl -s https://api.github.com/repos/ashish-jha-73/IkshvakuPEM/releases/latest)
+          tag=$(echo "$data" | jq -r .tag_name)
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "::error::could not determine the latest release"
+            exit 1
+          fi
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check if the formula is current
+        id: check
+        run: |
+          set -e
+          current=$(grep -oP 'version "\K[^"]+' Formula/ikshvakupem.rb || true)
+          echo "formula has: ${current:-none}; latest release: ${{ steps.rel.outputs.version }}"
+          if [ "$current" = "${{ steps.rel.outputs.version }}" ]; then
+            echo "up-to-date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up-to-date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update formula
+        if: steps.check.outputs.up-to-date == 'false'
+        run: |
+          set -e
+          tag="${{ steps.rel.outputs.tag }}"
+          version="${{ steps.rel.outputs.version }}"
+          url="https://github.com/ashish-jha-73/IkshvakuPEM/releases/download/$tag/ikshvaku-$version.tar.gz"
+          curl -LsSf "$url" -o /tmp/bundle.tar.gz
+          sha=$(sha256sum /tmp/bundle.tar.gz | cut -d' ' -f1)
+          sed -i "s|url \".*\"|url \"$url\"|"        Formula/ikshvakupem.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$sha\"|"  Formula/ikshvakupem.rb
+          sed -i "s|version \".*\"|version \"$version\"|" Formula/ikshvakupem.rb
+          echo "Formula updated to $version (sha256 $sha)"
+
+      - name: Ruby syntax check
+        if: steps.check.outputs.up-to-date == 'false'
+        run: ruby -c Formula/ikshvakupem.rb
+
+      - name: Commit and push
+        if: steps.check.outputs.up-to-date == 'false'
+        run: |
+          set -e
+          git config user.name "ikshvaku-bot"
+          git config user.email "ashish-jha-73@users.noreply.github.com"
+          git add Formula/ikshvakupem.rb
+          git commit -m "ikshvaku ${{ steps.rel.outputs.version }}"
+          git push
