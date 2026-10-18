@@ -1,10 +1,10 @@
-## Homebrew tap for Ikshvaku
+## Homebrew tap for IkshvakuPEM
 
 ```bash
-brew tap ashish-jha-73/ikshvaku https://github.com/ashish-jha-73/homebrew-ikshvaku
-brew install ikshvaku
+brew tap ashish-jha-73/ikshvakupem https://github.com/ashish-jha-73/homebrew-ikshvakupem
+brew install ikshvakupem
 ```
 
-Ikshvaku — a lightweight Python environment manager powered by
-[u](https://docs.astral.sh/uv/). See the
-[main repository](https://github.com/ashish-jha-73/IkshvakuPEM).
+IkshvakuPEM — a lightweight Python environment manager powered by
+[uv](https://docs.astral.sh/uv/). The command it installs is `ikshvaku`.
+See the [main repository](https://github.com/ashish-jha-73/IkshvakuPEM).
